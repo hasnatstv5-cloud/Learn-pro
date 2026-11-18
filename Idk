@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnPro - PDF to MCQ & Flashcards Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">LearnPro</span>
+            </div>
+            <div class="text-sm text-slate-400">AI Study Assistant</div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Step 1: Upload / Input View -->
+        <div id="upload-section" class="max-w-2xl mx-auto space-y-6">
+            <div class="text-center space-y-2">
+                <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Transform PDFs into Practice Material</h1>
+                <p class="text-slate-400">Upload your lecture notes, textbook chapters, or documents to instantly generate MCQs and Flashcards.</p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                <!-- Dropzone Area -->
+                <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-950/50">
+                    <input type="file" id="pdf-file" accept=".pdf,.txt" class="hidden">
+                    <div class="flex flex-col items-center space-y-3">
+                        <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-full">
+                            <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <p id="file-label" class="text-sm font-medium text-slate-300">Drop your PDF here, or <span class="text-indigo-400 underline">browse</span></p>
+                            <p class="text-xs text-slate-500">Supports PDF or text extraction</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-slate-800"></div>
+                    <span class="flex-shrink mx-4 text-xs text-slate-500 uppercase tracking-wider">Or paste text directly</span>
+                    <div class="flex-grow border-t border-slate-800"></div>
+                </div>
+
+                <!-- Textarea alternative -->
+                <textarea id="raw-text" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition" placeholder="Paste your study notes or chapter text here..."></textarea>
+
+                <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    <span>Generate Practice Material</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-section" class="hidden max-w-md mx-auto text-center py-24 space-y-4">
+            <div class="inline-block animate-spin text-indigo-500">
+                <i data-lucide="loader-2" class="w-12 h-12"></i>
+            </div>
+            <h3 class="text-lg font-medium text-slate-200">Analyzing document & building practice sets...</h3>
+            <p class="text-sm text-slate-500">Creating custom multiple choice questions and active-recall flashcards.</p>
+        </div>
+
+        <!-- Dashboard Workspace (Hidden by Default) -->
+        <div id="workspace-section" class="hidden space-y-6">
+            <!-- Navigation Tabs & Reset -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div class="flex space-x-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                    <button onclick="switchTab('mcq')" id="tab-mcq" class="px-5 py-2 rounded-lg text-sm font-medium transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 inline mr-2"></i> Practice MCQs
+                    </button>
+                    <button onclick="switchTab('flashcards')" id="tab-flashcards" class="px-5 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200">
+                        <i data-lucide="layers" class="w-4 h-4 inline mr-2"></i> Flashcards
+                    </button>
+                </div>
+                <button onclick="resetApp()" class="text-sm text-slate-400 hover:text-white flex items-center space-x-1 bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg transition">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Upload New Document</span>
+                </button>
+            </div>
+
+            <!-- MCQ View Container -->
+            <div id="view-mcq" class="space-y-6 max-w-3xl mx-auto">
+                <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                    <div>
+                        <h2 class="font-semibold text-lg">Multiple Choice Quiz</h2>
+                        <p class="text-xs text-slate-400">Select the correct choice for each concept extracted from your material.</p>
+                    </div>
+                    <div id="score-tracker" class="text-sm font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                        Score: 0 / 0
+                    </div>
+                </div>
+
+                <div id="mcq-container" class="space-y-6">
+                    <!-- Dynamically Injected MCQs -->
+                </div>
+
+                <div id="mcq-results-card" class="hidden bg-slate-900 border border-indigo-500/30 rounded-2xl p-6 text-center space-y-4">
+                    <div class="inline-flex p-3 bg-indigo-600/20 text-indigo-400 rounded-full">
+                        <i data-lucide="award" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Quiz Completed!</h3>
+                    <p id="final-score-text" class="text-slate-300"></p>
+                    <button onclick="restartQuiz()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-6 rounded-xl transition">Try Again</button>
+                </div>
+            </div>
+
+            <!-- Flashcards View Container -->
+            <div id="view-flashcards" class="hidden space-y-6 max-w-xl mx-auto">
+                <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                    <div>
+                        <h2 class="font-semibold text-lg">Active Recall Flashcards</h2>
+                        <p class="text-xs text-slate-400">Click card to flip and test memory retention.</p>
+                    </div>
+                    <div id="card-counter" class="text-sm text-slate-400 font-medium">Card 1 of 4</div>
+                </div>
+
+                <!-- Flashcard Flip Box -->
+                <div class="perspective-1000 w-full h-80 cursor-pointer" onclick="flipCard()">
+                    <div id="flashcard-inner" class="relative w-full h-full duration-500 transform-style-3d shadow-2xl rounded-2xl">
+                        <!-- Front Face -->
+                        <div class="absolute inset-0 backface-hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 flex flex-col justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Question / Term</span>
+                            <div id="fc-front" class="text-lg font-medium text-center text-slate-100 my-auto">
+                                Front content here...
+                            </div>
+                            <span class="text-xs text-slate-500 text-center">Click to reveal answer ⟲</span>
+                        </div>
+                        <!-- Back Face -->
+                        <div class="absolute inset-0 backface-hidden bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-8 flex flex-col justify-between rotate-y-180">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-cyan-400">Answer / Definition</span>
+                            <div id="fc-back" class="text-lg font-medium text-center text-slate-100 my-auto">
+                                Back content here...
+                            </div>
+                            <span class="text-xs text-slate-500 text-center">Click to flip back ⟲</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flashcard Controls -->
+                <div class="flex items-center justify-between pt-2">
+                    <button onclick="prevCard()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center space-x-2">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        <span>Previous</span>
+                    </button>
+                    <button onclick="nextCard()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center space-x-2">
+                        <span>Next</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Script Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Sample State & Data fallback generators
+        let sampleData = {
+            mcqs: [
+                {
+                    question: "What is the primary objective of active recall study methods?",
+                    options: [
+                        "Quickly skimming text without retention",
+                        "Challenging memory retrieval to enhance long-term storage",
+                        "Memorizing text verbatim line by line",
+                        "Avoiding practice tests entirely"
+                    ],
+                    correct: 1,
+                    explanation: "Active recall forces the brain to retrieve information actively, creating stronger neural pathways than passive re-reading."
+                },
+                {
+                    question: "Which file format is primarily parsed by LearnPro to synthesize flashcards?",
+                    options: ["Executable scripts", "Compressed archives", "PDF documents", "Raster graphics"],
+                    correct: 2,
+                    explanation: "LearnPro is designed to ingest and break down text-heavy PDFs and syllabus notes."
+                },
+                {
+                    question: "How do multiple-choice question distractors help with cognitive mastery?",
+                    options: [
+                        "They confuse the student permanently",
+                        "They target common misconceptions and test fine conceptual details",
+                        "They extend the test length arbitrarily",
+                        "They make scoring completely random"
+                    ],
+                    correct: 1,
+                    explanation: "Plausible distractors highlight subtle conceptual differences that superficial reading misses."
+                }
+            ],
+            flashcards: [
+                { front: "What is Spaced Repetition?", back: "A learning technique where review intervals are increased over time based on how well you remember the material." },
+                { front: "Define Active Recall", back: "A principle of studying where you stimulate memory during the learning process rather than passive review." },
+                { front: "What are Plausible Distractors?", back: "Incorrect choices in a multiple-choice question designed to look believable based on common student misconceptions." },
+                { front: "What is the key benefit of converting PDFs into Flashcards?", back: "It bridges the gap between passive document reading and active interactive self-testing." }
+            ]
+        };
+
+        let currentCardIndex = 0;
+        let isFlipped = false;
+        let userAnswers = {};
+
+        // DOM Elements
+        const uploadSection = document.getElementById('upload-section');
+        const loadingSection = document.getElementById('loading-section');
+        const workspaceSection = document.getElementById('workspace-section');
+        const generateBtn = document.getElementById('generate-btn');
+        const dropzone = document.getElementById('dropzone');
+        const pdfFileInput = document.getElementById('pdf-file');
+        const fileLabel = document.getElementById('file-label');
+
+        // Dropzone interactions
+        dropzone.addEventListener('click', () => pdfFileInput.click());
+        pdfFileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                fileLabel.innerHTML = `<span class="text-indigo-400 font-semibold">${e.target.files[0].name}</span> selected`;
+            }
+        });
+
+        // Trigger Generation Simulation
+        generateBtn.addEventListener('click', () => {
+            uploadSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+
+            setTimeout(() => {
+                loadingSection.classList.add('hidden');
+                workspaceSection.classList.remove('hidden');
+                renderMCQs();
+                renderFlashcard();
+                updateScoreTracker();
+            }, 1200);
+        });
+
+        function resetApp() {
+            workspaceSection.classList.add('hidden');
+            uploadSection.classList.remove('hidden');
+            pdfFileInput.value = '';
+            document.getElementById('raw-text').value = '';
+            fileLabel.innerHTML = `Drop your PDF here, or <span class="text-indigo-400 underline">browse</span>`;
+            userAnswers = {};
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            const btnMcq = document.getElementById('tab-mcq');
+            const btnFc = document.getElementById('tab-flashcards');
+            const viewMcq = document.getElementById('view-mcq');
+            const viewFc = document.getElementById('view-flashcards');
+
+            if(tab === 'mcq') {
+                btnMcq.className = "px-5 py-2 rounded-lg text-sm font-medium transition bg-indigo-600 text-white shadow";
+                btnFc.className = "px-5 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200";
+                viewMcq.classList.remove('hidden');
+                viewFc.classList.add('hidden');
+            } else {
+                btnFc.className = "px-5 py-2 rounded-lg text-sm font-medium transition bg-indigo-600 text-white shadow";
+                btnMcq.className = "px-5 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200";
+                viewFc.classList.remove('hidden');
+                viewMcq.classList.add('hidden');
+            }
+        }
+
+        // Render MCQs
+        function renderMCQs() {
+            const container = document.getElementById('mcq-container');
+            container.innerHTML = '';
+            document.getElementById('mcq-results-card').classList.add('hidden');
+
+            sampleData.mcqs.forEach((q, qIndex) => {
+                let optionsHtml = '';
+                q.options.forEach((opt, optIndex) => {
+                    optionsHtml += `
+                        <button onclick="handleOptionSelect(${qIndex}, ${optIndex})" id="q${qIndex}-opt${optIndex}" class="w-full text-left p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-slate-700 text-sm transition flex items-center justify-between group">
+                            <span class="flex items-center space-x-3">
+                                <span class="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-slate-400 group-hover:border-indigo-500">${String.fromCharCode(65 + optIndex)}</span>
+                                <span class="text-slate-300">${opt}</span>
+                            </span>
+                        </button>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <h3 class="font-medium text-base text-slate-100"><span class="text-indigo-400 font-semibold mr-2">Q${qIndex + 1}.</span>${q.question}</h3>
+                        <div class="space-y-2.5">${optionsHtml}</div>
+                        <div id="q${qIndex}-explanation" class="hidden text-xs bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-slate-400"></div>
+                    </div>
+                `;
+            });
+        }
+
+        function handleOptionSelect(qIndex, optIndex) {
+            if (userAnswers[qIndex] !== undefined) return; // Prevent changing answer once picked
+            userAnswers[qIndex] = optIndex;
+
+            const q = sampleData.mcqs[qIndex];
+            const correctOpt = q.correct;
+
+            // Style options
+            for(let i = 0; i < q.options.length; i++) {
+                const btn = document.getElementById(`q${qIndex}-opt${i}`);
+                btn.disabled = true;
+                if(i === correctOpt) {
+                    btn.className = "w-full text-left p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-950/20 text-sm transition flex items-center justify-between text-emerald-200";
+                } else if(i === optIndex && optIndex !== correctOpt) {
+                    btn.className = "w-full text-left p-3.5 rounded-xl border border-rose-500/50 bg-rose-950/20 text-sm transition flex items-center justify-between text-rose-200";
+                } else {
+                    btn.className = "w-full text-left p-3.5 rounded-xl border border-slate-900 bg-slate-950/20 text-sm transition flex items-center justify-between text-slate-600 opacity-50";
+                }
+            }
+
+            // Show explanation
+            const expDiv = document.getElementById(`q${qIndex}-explanation`);
+            expDiv.innerHTML = `<strong class="text-slate-300">Explanation:</strong> ${q.explanation}`;
+            expDiv.classList.remove('hidden');
+
+            updateScoreTracker();
+
+            // Check if all answered
+            if(Object.keys(userAnswers).length === sampleData.mcqs.length) {
+                showFinalScore();
+            }
+        }
+
+        function updateScoreTracker() {
+            let score = 0;
+            Object.keys(userAnswers).forEach(qIdx => {
+                if(userAnswers[qIdx] === sampleData.mcqs[qIdx].correct) score++;
+            });
+            document.getElementById('score-tracker').innerText = `Score: ${score} / ${sampleData.mcqs.length}`;
+        }
+
+        function showFinalScore() {
+            let score = 0;
+            Object.keys(userAnswers).forEach(qIdx => {
+                if(userAnswers[qIdx] === sampleData.mcqs[qIdx].correct) score++;
+            });
+            const resultsCard = document.getElementById('mcq-results-card');
+            const finalScoreText = document.getElementById('final-score-text');
+            finalScoreText.innerText = `You answered ${score} out of ${sampleData.mcqs.length} questions correctly.`;
+            resultsCard.classList.remove('hidden');
+        }
+
+        function restartQuiz() {
+            userAnswers = {};
+            renderMCQs();
+            updateScoreTracker();
+        }
+
+        // Flashcards Logic
+        function renderFlashcard() {
+            const card = sampleData.flashcards[currentCardIndex];
+            document.getElementById('fc-front').innerText = card.front;
+            document.getElementById('fc-back').innerText = card.back;
+            document.getElementById('card-counter').innerText = `Card ${currentCardIndex + 1} of ${sampleData.flashcards.length}`;
+            
+            if(isFlipped) {
+                isFlipped = false;
+                document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+            }
+        }
+
+        function flipCard() {
+            isFlipped = !isFlipped;
+            const inner = document.getElementById('flashcard-inner');
+            if(isFlipped) {
+                inner.classList.add('rotate-y-180');
+            } else {
+                inner.classList.remove('rotate-y-180');
+            }
+        }
+
+        function nextCard() {
+            currentCardIndex = (currentCardIndex + 1) % sampleData.flashcards.length;
+            renderFlashcard();
+        }
+
+        function prevCard() {
+            currentCardIndex = (currentCardIndex - 1 + sampleData.flashcards.length) % sampleData.flashcards.length;
+            renderFlashcard();
+        }
+    </script>
+</body>
+</html>
